@@ -38,6 +38,7 @@ from .resources import *
 # Import the code for the dialog
 from .Add_new_roads_dialog import Add_new_roadsDialog
 import os
+#os module for surface access to the system
 
 
 class Add_new_roads:
@@ -53,53 +54,7 @@ class Add_new_roads:
         """
         self.iface = iface
         self.dlg = Add_new_roadsDialog()
-        '''layer = self.iface.activeLayer()
-        provider = layer.dataProvider()
-        if provider.name() == 'postgres':
-            uri = QgsDataSourceUri(provider.dataSourceUri())
-            host_ = uri.host()
-            database_ = uri.database()
-            port_ = int(uri.port())
-            la = self.iface.activeLayer()
-            lyr = la.selectedFeatures()
-            import os
-            get_path = str(os.path.dirname(os.path.realpath(__file__)))
-            with open(os.path.join(get_path, 'test_218.txt'),
-                        'r') as path_con:  # os модуль поверхностного обращения к системе, вызов ехе.os.path.join патх работа с путями а джоин объединяет
-                f = path_con.read()
-            conn_param = f.split('\n')
-            conn = psycopg2.connect(dbname=str(database_), user=conn_param[0], password=conn_param[1], host=str(host_), port=str(port_))
-            cursor_postgis = conn.cursor()  # для изменения базы
-            # Табличка с названиями улиц
-            list_street = []
-            sql_2 = """select street_id, name from panoramas.street_names"""
-            cursor_postgis.execute(sql_2)
-            # for s in cursor_postgis:
-            for s in cursor_postgis:
-                a = (str(list(s)[0]))  # получение айдишников так как первый в списке
-                d = (str(list(s)[1]))  # получение названий так как второй в огромном списке
-                list_street.append([a, d])
-                # list_street.append(str(list(s)[0]))
-                # list_street.append(list(s))
-            self.dlg.tableWidget_2.setColumnCount(2)
-            self.dlg.tableWidget_2.setRowCount(len(list_street))
-            self.dlg.tableWidget_2.setHorizontalHeaderLabels(
-                ('street_id', 'Название улицы'))
-            row = 0
-            for tup in list_street:
-                col = 0
-                for item in tup:
-                    cellinfo = QTableWidgetItem(item)
-                    self.dlg.tableWidget_2.setItem(row, col, cellinfo)
-                    col += 1
-                row += 1
-            conn.commit()
-            cursor_postgis.close()
-            conn.close()
-            self.list_street = list_street'''
         # Save reference to the QGIS interface
-
-        # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
@@ -112,8 +67,6 @@ class Add_new_roads:
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
-        #self.dlg = Add_new_roadsDialog()
-        # Declare instance attributes
         self.actions = []
         self.list_street = []
         self.menu = self.tr(u'&Add new roads')
@@ -127,7 +80,6 @@ class Add_new_roads:
 
         self.dlg.pushButton_2.clicked.connect(self.clickMethod_2)
         self.dlg.pushButton_3.clicked.connect(self.clickMethod_3)
-
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -239,39 +191,36 @@ class Add_new_roads:
             self.iface.removeToolBarIcon(action)
 
     def clickMethod_3(self):
+        #filling the table with data from the database: street name / number according to the classifier
         from qgis.core import QgsVectorLayer, QgsPoint, QgsProject, QgsGeometry, QgsFeature, QgsDistanceArea, \
             QgsCoordinateReferenceSystem, QgsPointXY, Qgis
         try:
+            #database connection
             layer = self.iface.activeLayer()
-
             provider = layer.dataProvider()
             if provider.name() == 'postgres':
                 uri = QgsDataSourceUri(provider.dataSourceUri())
                 host_ = uri.host()
                 database_ = uri.database()
                 port_ = int(uri.port())
-                la = self.iface.activeLayer()
-                lyr = la.selectedFeatures()
                 import os
                 get_path = str(os.path.dirname(os.path.realpath(__file__)))
                 with open(os.path.join(get_path, 'test_218.txt'),
-                          'r') as path_con:  # os модуль поверхностного обращения к системе, вызов ехе.os.path.join патх работа с путями а джоин объединяет
+                          'r') as path_con:
                     f = path_con.read()
                 conn_param = f.split('\n')
                 conn = psycopg2.connect(dbname=str(database_), user=conn_param[0], password=conn_param[1], host=str(host_),
                                         port=str(port_))
-                cursor_postgis = conn.cursor()  # для изменения базы
-                # Табличка с названиями улиц
+                cursor_postgis = conn.cursor()  # to change base
+                # Street name table
                 list_street = []
                 self.list_street = list_street
                 sql_2 = """select street_id, name from panoramas.street_names"""
                 cursor_postgis.execute(sql_2)
                 for s in cursor_postgis:
-                    a = (str(list(s)[0]))  # получение айдишников так как первый в списке
-                    d = (str(list(s)[1]))  # получение названий так как второй в огромном списке
+                    a = (str(list(s)[0]))  # getting IDs
+                    d = (str(list(s)[1]))  # getting street names
                     list_street.append([a, d])
-                    # list_street.append(str(list(s)[0]))
-                    # list_street.append(list(s))
                 self.dlg.tableWidget_2.setColumnCount(2)
                 self.dlg.tableWidget_2.setRowCount(len(list_street))
                 self.dlg.tableWidget_2.setHorizontalHeaderLabels(
@@ -292,7 +241,8 @@ class Add_new_roads:
             provider.name() != none
 
     def clickMethod_2(self):
-        import urllib.request #библиотека для чтения url
+        #download streets from osm and further preparation of data for the database
+        import urllib.request #library for reading url
         from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry,QgsExpression, QgsFeatureRequest
 
         xmlData = '<osm-script timeout=\"10\">'# запрос для osm что скачивать
@@ -303,14 +253,14 @@ class Add_new_roads:
         xmlData += '</osm-script>'
 
         osmUrl = 'http://overpass-api.de/api/interpreter'
-        #osmUrl = 'https://overpass.kumi.systems/api/interpreter'
-        coordinates = self.iface.mapCanvas().extent() # получение координат экстента окна
+
+        coordinates = self.iface.mapCanvas().extent() #getting the coordinates of an extent
         # Defining the crs from src and destiny
-        epsg = self.iface.mapCanvas().mapSettings().destinationCrs().authid() # система координат проекта
+        epsg = self.iface.mapCanvas().mapSettings().destinationCrs().authid() # project coordinate system
         crsSrc = QgsCoordinateReferenceSystem(epsg)
-        crsDest = QgsCoordinateReferenceSystem(4326)# в какую систему координат
+        crsDest = QgsCoordinateReferenceSystem(4326)#coordinate system of database
         # Creating a transformer
-        coordinateTransformer = QgsCoordinateTransform(crsSrc, crsDest, QgsProject.instance())# преобразование коорд системы
+        coordinateTransformer = QgsCoordinateTransform(crsSrc, crsDest, QgsProject.instance())
         # Transforming the points
         coordinates_Transf = coordinateTransformer.transform(coordinates)
         xmlData = xmlData.replace('maxlong', str(round(coordinates_Transf.xMaximum(), 6)))
@@ -321,8 +271,7 @@ class Add_new_roads:
         #self.dlg.listWidget.addItems([str(xmlData)])
         req = urllib.request.Request(url=osmUrl, data=xmlData, headers={'Content-Type': 'application/xml'})
         response = urllib.request.urlopen(req)
-
-        localfile = open(r'C:\Users\saraginskayam\_WORK\test.osm', 'wb') #wb писать по-битово
+        localfile = open(r'C:\Users\saraginskayam\_WORK\test.osm', 'wb')
         localfile.write(response.read())
         localfile.close()
         name_layer = 'osm_all_lines'
@@ -345,8 +294,8 @@ class Add_new_roads:
             feat.setGeometry(element.geometry())
             attrs = element.attributes()# get the feature's attributes from osm layer
             #self.dlg.listWidget.addItem(str(attrs))
-            street_name_osm = str(attrs[1]).lower()#заменить все заглавные на строчные
-            for name_street in self.list_street:#перебор всех названий улиц из базы
+            street_name_osm = str(attrs[1]).lower()
+            for name_street in self.list_street:
                 #self.dlg.listWidget.addItem(str(name_street[1]))
                 if str(name_street[1]).lower() == street_name_osm:
                     attr_street.append(name_street[0])
@@ -361,6 +310,7 @@ class Add_new_roads:
         os.remove(r'C:\Users\saraginskayam\_WORK\test.osm')
 
     def clickMethod(self):
+        #search by street name (in the future by number too)
         from qgis.core import QgsVectorLayer, QgsPoint, QgsProject, QgsGeometry, QgsFeature, QgsDistanceArea, \
             QgsCoordinateReferenceSystem, QgsPointXY, Qgis
         layer = self.iface.activeLayer()
@@ -373,7 +323,7 @@ class Add_new_roads:
             import os
             get_path = str(os.path.dirname(os.path.realpath(__file__)))
             with open(os.path.join(get_path, 'test_218.txt'),
-                      'r') as path_con:  # os модуль поверхностного обращения к системе, вызов ехе.os.path.join патх работа с путями а джоин объединяет
+                      'r') as path_con:
                 f = path_con.read()
             conn_param = f.split('\n')
             conn = psycopg2.connect(dbname=str(database_), user=conn_param[0], password=conn_param[1], host=str(host_), port=str(port_))
@@ -384,8 +334,8 @@ class Add_new_roads:
             params = [test]
             cursor_postgis.execute(sql_2, params)
             for s in cursor_postgis:
-                a = (str(list(s)[0]))#получение айдишников так как первый в списке
-                d = (str(list(s)[1]))#получение названий так как второй в огромном списке
+                a = (str(list(s)[0]))
+                d = (str(list(s)[1]))
                 list_street.append([a, d])
             self.dlg.tableWidget_2.setColumnCount(2)
             self.dlg.tableWidget_2.setRowCount(len(list_street))
@@ -416,61 +366,34 @@ class Add_new_roads:
             port_ = int(uri.port())
             la = self.iface.activeLayer()
             lyr = la.selectedFeatures()
-
             get_path = str(os.path.dirname(os.path.realpath(__file__)))
             with open(os.path.join(get_path, 'test_218.txt'),
-                        'r') as path_con:  # os модуль поверхностного обращения к системе, вызов ехе.os.path.join патх работа с путями а джоин объединяет
+                        'r') as path_con:
                 f = path_con.read()
             conn_param = f.split('\n')
             conn = psycopg2.connect(dbname=str(database_), user=conn_param[0], password=conn_param[1], host=str(host_), port=str(port_))
-            cursor_postgis = conn.cursor()  # для изменения базы
-            list_attrib = []# лепим список для передачи функции
+            cursor_postgis = conn.cursor()
+            list_attrib = []
             for el in lyr:
                 geom_b = el.geometry().convertToType(1)
-                #geom_b = el.geometry()# попробуй конветр то тайп 1
                 x = geom_b.asWkt()
                 street_id = str(el[0])
-                special_use = str(el[2])# получить значения из атрибутов по номеру
+                special_use = str(el[2])
                 x1 = x + '#'
                 x2 = x1 + street_id + ','
                 x3 = x2 + special_use
                 list_attrib.append(x3)
                 self.dlg.listWidget.clear()
                 self.dlg.listWidget.addItems(list_attrib)
-
-            '''# Табличка с названиями улиц
-            list_street = []
-            sql_2 = """select street_id, name from panoramas.street_names"""
-            cursor_postgis.execute(sql_2)
-            #for s in cursor_postgis:
-            for s in cursor_postgis:
-                a = (str(list(s)[0]))#получение айдишников так как первый в списке
-                d = (str(list(s)[1]))#получение названий так как второй в огромном списке
-                list_street.append([a, d])
-                #list_street.append(str(list(s)[0]))
-                #list_street.append(list(s))
-            self.dlg.tableWidget_2.setColumnCount(2)
-            self.dlg.tableWidget_2.setRowCount(len(list_street))
-            self.dlg.tableWidget_2.setHorizontalHeaderLabels(
-                    ('street_id', 'Название улицы'))
-            row = 0
-            for tup in list_street:
-                col = 0
-                for item in tup:
-                    cellinfo = QTableWidgetItem(item)
-                    self.dlg.tableWidget_2.setItem(row, col, cellinfo)
-                    col += 1
-                row += 1'''
-            # Список операторов из базы
+            # List of operators from the database
             name = []
             sql_1 = """select name from panoramas.operators"""
-            cursor_postgis.execute(sql_1) #выполнить изменения
+            cursor_postgis.execute(sql_1)
             for row in cursor_postgis:
                 name.append(
-                    str(list(row)[0]))  # преобразую строку в список, потом беру первый элемент и делаю его стринговым
+                    str(list(row)[0]))
             self.dlg.comboBox.clear()
             self.dlg.comboBox.addItems(name)
-
             # show the dialog
             self.dlg.show()
             # Run the dialog event loop
@@ -478,10 +401,7 @@ class Add_new_roads:
             # See if OK was pressed
             if result:
                 moduser = self.dlg.comboBox.currentText()
-                cursor_postgis.callproc('panoramas.drawlines_to_segments', (list_attrib, moduser))  # вызов функции для резки дорог
+                cursor_postgis.callproc('panoramas.drawlines_to_segments', (list_attrib, moduser))  # call a function from the database to cut roads
                 conn.commit()
                 cursor_postgis.close()
                 conn.close()
-
-
-
